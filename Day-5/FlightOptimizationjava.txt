@@ -1,0 +1,96 @@
+import java.util.*;
+
+class FlightOptimization {
+    static class Flight {
+        String from, to;
+        int takeOff, landing, cost;
+
+        Flight(String from, String to, int takeOff, int landing, int cost) {
+            this.from = from;
+            this.to = to;
+            this.takeOff = takeOff;
+            this.landing = landing;
+            this.cost = cost;
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
+        sc.nextLine(); // Consume newline
+
+        Map<String, List<Flight>> graph = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            String[] details = sc.nextLine().split(" ");
+            String from = details[0], to = details[1];
+            int takeOff = parseTime(details[2]);
+            int landing = parseTime(details[3]);
+            int cost = Integer.parseInt(details[4]);
+
+            graph.putIfAbsent(from, new ArrayList<>());
+            graph.get(from).add(new Flight(from, to, takeOff, landing, cost));
+        }
+
+        String[] travelDetails = sc.nextLine().split(" ");
+        String start = travelDetails[0];
+        String end = travelDetails[1];
+        int preferredStart = parseTime(travelDetails[2]);
+        int preferredEnd = parseTime(travelDetails[3]);
+
+        int result = findMinimumCost(graph, start, end, preferredStart, preferredEnd);
+        System.out.println(result == Integer.MAX_VALUE ? "Impossible" : result);
+    }
+
+    private static int findMinimumCost(Map<String, List<Flight>> graph, String start, String end, int preferredStart, int preferredEnd) {
+        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[1])); // [currentCity, currentCost, currentTime]
+        pq.offer(new int[]{hashCity(start), 0, preferredStart});
+
+        Map<Integer, Integer> minCostAtCity = new HashMap<>();
+        minCostAtCity.put(hashCity(start), 0);
+
+        while (!pq.isEmpty()) {
+            int[] current = pq.poll();
+            int currentCity = current[0], currentCost = current[1], currentTime = current[2];
+
+            if (currentCity == hashCity(end)) return currentCost;
+
+            if (!graph.containsKey(reverseHashCity(currentCity))) continue;
+
+            for (Flight flight : graph.get(reverseHashCity(currentCity))) {
+                if (flight.takeOff < preferredStart || flight.landing > preferredEnd || flight.takeOff < currentTime) {
+                    continue;
+                }
+
+                int nextCity = hashCity(flight.to);
+                int newCost = currentCost + flight.cost;
+                if (newCost < minCostAtCity.getOrDefault(nextCity, Integer.MAX_VALUE)) {
+                    minCostAtCity.put(nextCity, newCost);
+                    pq.offer(new int[]{nextCity, newCost, flight.landing});
+                }
+            }
+        }
+
+        return Integer.MAX_VALUE;
+    }
+
+    private static int parseTime(String time) {
+        boolean isPm = time.endsWith("Pm");
+        String[] parts = time.substring(0, time.length() - 2).split(":");
+        int hours = Integer.parseInt(parts[0]);
+        int minutes = Integer.parseInt(parts[1]);
+
+        if (isPm && hours != 12) hours += 12;
+        if (!isPm && hours == 12) hours = 0;
+
+        return hours * 60 + minutes;
+    }
+
+    private static int hashCity(String city) {
+        return city.hashCode(); // Hashing city names for unique identification
+    }
+
+    private static String reverseHashCity(int hash) {
+        // Use a reverse mapping or a better hashing scheme for real-world applications
+        return String.valueOf(hash); // Placeholder: in this mock-up, the hash corresponds directly
+    }
+}
